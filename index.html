@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDP Dashboard 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f6f8;--surface:#ffffff;--surface2:#f0f1f4;--surface3:#e8eaee;
+  --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);
+  --text:#1a1a2e;--muted:#8a8fa8;--faint:#c5c9d6;
+  --blue:#3b6ef5;--green:#18b566;--orange:#f09425;--red:#e84545;--purple:#7c5cbf;--teal:#0ea5a0;
+  --blue-dim:#eef2ff;--green-dim:#edfaf3;--orange-dim:#fff6eb;--red-dim:#fff0f0;--purple-dim:#f3f0ff;--teal-dim:#e6f8f8;
+  --blue-txt:#2952c4;--green-txt:#0e8c4e;--orange-txt:#c47a10;--red-txt:#c02020;--purple-txt:#5a3d99;--teal-txt:#0a7a76;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;min-height:100vh}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--surface2)}::-webkit-scrollbar-thumb{background:var(--faint);border-radius:3px}
+
+/* UPLOAD */
+#upload-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;background:linear-gradient(145deg,#f0f4ff 0%,#f5f6f8 60%)}
+.upload-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.22em;color:var(--blue);text-transform:uppercase;margin-bottom:2rem;background:var(--blue-dim);padding:5px 14px;border-radius:20px;border:1px solid rgba(59,110,245,.15)}
+.upload-title{font-size:34px;font-weight:300;color:var(--text);margin-bottom:.5rem;text-align:center;letter-spacing:-.03em}
+.upload-title strong{font-weight:600}
+.upload-sub{font-size:14px;color:var(--muted);margin-bottom:3rem;text-align:center}
+.upload-zone{width:100%;max-width:500px;border:1.5px dashed var(--faint);border-radius:20px;padding:3.5rem 2rem;text-align:center;cursor:pointer;transition:border-color .2s,background .2s,box-shadow .2s;position:relative;background:var(--surface);box-shadow:0 2px 24px rgba(0,0,0,0.06)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--blue);background:var(--blue-dim);box-shadow:0 4px 32px rgba(59,110,245,.12)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-icon{width:56px;height:56px;border-radius:16px;background:var(--blue-dim);border:1.5px solid rgba(59,110,245,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:24px}
+.upload-zone h3{font-weight:600;font-size:16px;color:var(--text);margin-bottom:.4rem}
+.upload-zone p{color:var(--muted);font-size:13px}
+.upload-cols{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:1.5rem;max-width:520px}
+.col-badge{font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--surface);border:1px solid var(--border2);padding:3px 10px;border-radius:6px;color:var(--muted)}
+
+/* LOADING */
+#loading{display:none;position:fixed;inset:0;background:rgba(245,246,248,.92);z-index:300;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+.spinner{width:34px;height:34px;border:2.5px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:13px;color:var(--muted)}
+
+/* DASHBOARD */
+#dashboard{display:none}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:.85rem 2rem;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;background:rgba(255,255,255,.95);backdrop-filter:blur(12px)}
+.topbar-l{display:flex;align-items:center;gap:14px}
+.logo{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.15em;color:var(--blue);text-transform:uppercase;background:var(--blue-dim);padding:4px 10px;border-radius:6px}
+.topbar-title{font-size:14px;font-weight:600;color:var(--text)}
+.topbar-file{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn-reset{background:var(--surface2);border:1px solid var(--border2);color:var(--muted);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-family:'Plus Jakarta Sans',sans-serif;transition:.15s;font-weight:500}
+.btn-reset:hover{color:var(--text);border-color:var(--blue);background:var(--blue-dim)}
+
+.main{padding:1.75rem 2rem 4rem;max-width:1360px;margin:0 auto}
+
+/* SECTION LABEL */
+.sec{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;color:var(--blue);text-transform:uppercase;margin:2.5rem 0 1rem;display:flex;align-items:center;gap:10px}
+.sec::after{content:'';flex:1;height:1px;background:var(--border2)}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:1.25rem}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1rem 1.15rem;box-shadow:0 1px 4px rgba(0,0,0,0.04);transition:box-shadow .2s,border-color .2s}
+.metric:hover{box-shadow:0 4px 16px rgba(0,0,0,0.08);border-color:var(--border2)}
+.metric-label{font-size:10px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px;font-weight:500}
+.metric-val{font-size:26px;font-weight:600;line-height:1;margin-bottom:4px}
+.metric-sub{font-size:10px;color:var(--faint);line-height:1.4}
+.c-blue{color:var(--blue)}.c-green{color:var(--green)}.c-orange{color:var(--orange)}.c-red{color:var(--red)}.c-purple{color:var(--purple)}.c-teal{color:var(--teal)}
+
+/* ALERT */
+.alert{background:var(--orange-dim);border:1px solid rgba(240,148,37,.25);border-radius:10px;padding:.75rem 1.1rem;font-size:12px;color:var(--orange-txt);margin-bottom:1.25rem;display:flex;align-items:center;gap:8px;font-weight:500}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.gw{margin-bottom:14px}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.15rem 1.4rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
+.card-sub{font-size:11px;color:var(--muted);margin-bottom:12px}
+
+/* LEGEND */
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+.leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+
+/* BUCKET CARDS */
+.bucket-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.bucket-card{background:var(--surface2);border-radius:12px;padding:1rem 1.1rem;text-align:center;border:1px solid var(--border)}
+.bucket-num{font-size:30px;font-weight:600;line-height:1;margin-bottom:6px}
+.bucket-label{font-size:11px;color:var(--muted);line-height:1.5}
+
+/* STAT TABLE */
+.st{width:100%;border-collapse:collapse}
+.st td{padding:5px 0;font-size:12px;border-bottom:1px solid var(--border)}
+.st tr:last-child td{border-bottom:none}
+.st td:first-child{color:var(--muted)}
+.st td:last-child{text-align:right;font-family:'JetBrains Mono',monospace;font-weight:500;color:var(--text)}
+.badge-x{display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;background:var(--purple-dim);color:var(--purple-txt);margin-left:5px;font-family:'JetBrains Mono',monospace;font-weight:500}
+.badge-std{display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;background:var(--surface2);color:var(--muted);margin-left:5px}
+
+/* PEOPLE TABLE */
+.people-search{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;color:var(--text);font-size:12px;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:10px;outline:none;transition:border-color .15s}
+.people-search:focus{border-color:var(--blue);background:var(--surface)}
+.people-search::placeholder{color:var(--muted)}
+.people-table-wrap{max-height:340px;overflow-y:auto;border-radius:10px;border:1px solid var(--border)}
+.people-table{width:100%;border-collapse:collapse;font-size:12px}
+.people-table thead th{background:var(--surface2);color:var(--muted);font-weight:600;padding:7px 10px;text-align:left;position:sticky;top:0;font-size:11px;letter-spacing:.03em;border-bottom:1px solid var(--border)}
+.people-table tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+.people-table tbody tr:last-child{border-bottom:none}
+.people-table tbody tr:hover{background:var(--surface2)}
+.people-table td{padding:7px 10px;color:var(--text);vertical-align:middle}
+.people-table td.muted{color:var(--muted)}
+.people-table td.mono{font-family:'JetBrains Mono',monospace;font-size:11px}
+.pct-pill{display:inline-block;padding:2px 8px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600}
+.tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-weight:500}
+.tag-nm{background:var(--blue-dim);color:var(--blue-txt)}
+.tag-mg{background:var(--purple-dim);color:var(--purple-txt)}
+.empty-state{text-align:center;padding:2.5rem 0;color:var(--muted);font-size:13px}
+
+/* TOP LIST */
+.top-list{list-style:none}
+.top-list li{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
+.top-list li:last-child{border-bottom:none}
+.top-rank{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);width:18px;flex-shrink:0}
+.top-name{flex:1;min-width:0}
+.top-name-txt{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-sub{font-size:10px;color:var(--muted)}
+.pbar-wrap{width:70px;height:4px;background:var(--surface3);border-radius:2px;overflow:hidden;flex-shrink:0}
+.pbar-fill{height:100%;border-radius:2px}
+.top-pct{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--green);width:40px;text-align:right;flex-shrink:0}
+
+/* SUMMARY BOX */
+.summary-box{background:var(--surface2);border-radius:10px;padding:.85rem 1rem;margin-bottom:10px;border:1px solid var(--border)}
+.summary-box .big{font-size:30px;font-weight:700;line-height:1;margin-bottom:3px}
+.summary-box .sm{font-size:11px;color:var(--muted)}
+
+/* TABS */
+.tab-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tab-btn{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:5px 14px;font-size:11px;color:var(--muted);cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:.15s;font-weight:500}
+.tab-btn.active{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);font-weight:600}
+.tab-btn:hover:not(.active){border-color:var(--border2);background:var(--surface3)}
+
+@media(max-width:960px){.metrics{grid-template-columns:repeat(3,1fr)}.g2,.g3{grid-template-columns:1fr}.bucket-grid{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+
+<div id="upload-screen">
+  <div class="upload-eyebrow">IDP Analytics · 2026</div>
+  <h1 class="upload-title">Development Plan <strong>Dashboard</strong></h1>
+  <p class="upload-sub">Import file Excel untuk melihat analisis lengkap progress IDP karyawan</p>
+  <div class="upload-zone" id="drop-zone">
+    <input type="file" id="file-input" accept=".xlsx,.xls">
+    <div class="upload-icon">📂</div>
+    <h3>Klik atau drag & drop file Excel</h3>
+    <p>Format .xlsx atau .xls · Sheet pertama akan dibaca otomatis</p>
+  </div>
+  <div class="upload-cols" style="margin-top:1.5rem">
+    <span class="col-badge">Participant Name</span><span class="col-badge">NIK</span>
+    <span class="col-badge">Directorate</span><span class="col-badge">Compartment</span>
+    <span class="col-badge">Department</span><span class="col-badge">Managerial Status</span>
+    <span class="col-badge">Total</span><span class="col-badge">Not Yet</span>
+    <span class="col-badge">In Progress</span><span class="col-badge">Completed</span>
+  </div>
+</div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text">Memproses data Excel…</div>
+</div>
+
+<div id="dashboard">
+  <div class="topbar">
+    <div class="topbar-l">
+      <span class="logo">IDP 2026</span>
+      <span class="topbar-title">Development Plan Dashboard</span>
+      <span class="topbar-file" id="fname"></span>
+    </div>
+    <button class="btn-reset" onclick="resetDB()">↩ Ganti File</button>
+  </div>
+
+  <div class="main">
+    <div class="alert" id="alert-banner" style="display:none">⚠ <span id="alert-text"></span></div>
+
+    <!-- RINGKASAN UMUM -->
+    <div class="sec">Ringkasan Umum</div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Total Peserta</div><div class="metric-val c-blue" id="m-total">—</div><div class="metric-sub" id="m-dir">—</div></div>
+      <div class="metric"><div class="metric-label">Total Aktivitas</div><div class="metric-val" id="m-akt">—</div><div class="metric-sub" id="m-avg">—</div></div>
+      <div class="metric"><div class="metric-label">Selesai 100%</div><div class="metric-val c-green" id="m-full">—</div><div class="metric-sub" id="m-full-pct">—</div></div>
+      <div class="metric"><div class="metric-label">Ada Progress</div><div class="metric-val c-orange" id="m-prog">—</div><div class="metric-sub" id="m-prog-pct">—</div></div>
+      <div class="metric"><div class="metric-label">Belum Mulai</div><div class="metric-val c-red" id="m-belum">—</div><div class="metric-sub" id="m-belum-pct">—</div></div>
+      <div class="metric"><div class="metric-label">Lebih dari Standar</div><div class="metric-val c-purple" id="m-extra">—</div><div class="metric-sub" id="m-extra-pct">NM>6 + Mgr>7</div></div>
+    </div>
+
+    <!-- TINGKAT PENYELESAIAN -->
+    <div class="sec">Tingkat Penyelesaian per Karyawan</div>
+    <div class="card gw">
+      <div class="card-title">Distribusi completion rate individual</div>
+      <div class="card-sub">Berapa % competency sudah selesai per karyawan</div>
+      <div class="bucket-grid" id="bucket-grid"></div>
+    </div>
+
+    <!-- DAFTAR NAMA PER STATUS -->
+    <div class="sec">Daftar Karyawan per Status Progress</div>
+    <div class="card gw">
+      <div class="tab-row" id="progress-tabs"></div>
+      <div id="progress-table-area"></div>
+    </div>
+
+    <!-- KARYAWAN TOTAL > 7 -->
+    <div class="sec">Karyawan dengan Competency Lebih dari Standar</div>
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">Non Managerial — Total lebih dari 6</div>
+        <div class="card-sub" id="nm-extra-sub"></div>
+        <div class="summary-box">
+          <div class="big c-purple" id="nm-extra-n">—</div>
+          <div class="sm">dari <span id="nm-total-n">—</span> Non Managerial</div>
+        </div>
+        <div class="tab-row" id="nm-tabs"></div>
+        <div id="nm-table-area"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Managerial — Total lebih dari 7</div>
+        <div class="card-sub" id="mg-extra-sub"></div>
+        <div class="summary-box">
+          <div class="big c-purple" id="mg-extra-n">—</div>
+          <div class="sm">dari <span id="mg-total-n">—</span> Managerial</div>
+        </div>
+        <div class="tab-row" id="mg-tabs"></div>
+        <div id="mg-table-area"></div>
+      </div>
+    </div>
+
+    <!-- STATUS CHART + TOP -->
+    <div class="sec">Status Aktivitas & Top Performer</div>
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">Status keseluruhan aktivitas</div>
+        <div class="card-sub">Proporsi Not Yet / In Progress / Completed</div>
+        <div class="legend">
+          <span class="leg"><span class="leg-dot" style="background:#dde0e8"></span>Not Yet</span>
+          <span class="leg"><span class="leg-dot" style="background:var(--blue)"></span>In Progress</span>
+          <span class="leg"><span class="leg-dot" style="background:var(--green)"></span>Completed</span>
+        </div>
+        <div style="position:relative;height:210px"><canvas id="cDonut"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Top 10 karyawan — completion tertinggi</div>
+        <div class="card-sub">Diurutkan berdasarkan % competency selesai</div>
+        <ul class="top-list" id="top-list"></ul>
+      </div>
+    </div>
+
+    <!-- PER DIREKTORAT -->
+    <div class="sec">Per Direktorat</div>
+    <div class="card gw">
+      <div class="card-title">Progress aktivitas per direktorat</div>
+      <div class="card-sub">Stacked: Not Yet / In Progress / Completed</div>
+      <div class="legend">
+        <span class="leg"><span class="leg-dot" style="background:#dde0e8"></span>Not Yet</span>
+        <span class="leg"><span class="leg-dot" style="background:var(--blue)"></span>In Progress</span>
+        <span class="leg"><span class="leg-dot" style="background:var(--green)"></span>Completed</span>
+      </div>
+      <div style="position:relative;height:220px"><canvas id="cDirStack"></canvas></div>
+    </div>
+    <div class="g3">
+      <div class="card"><div class="card-title">Jumlah peserta</div><div class="card-sub">Per direktorat</div><div style="position:relative;height:180px"><canvas id="cDirCount"></canvas></div></div>
+      <div class="card"><div class="card-title">Rata-rata % selesai/karyawan</div><div class="card-sub">Completion rate individual</div><div style="position:relative;height:180px"><canvas id="cDirPct"></canvas></div></div>
+      <div class="card"><div class="card-title">Rata-rata jumlah competency</div><div class="card-sub">Per direktorat</div><div style="position:relative;height:180px"><canvas id="cDirAvgComp"></canvas></div></div>
+    </div>
+
+    <!-- MANAGERIAL -->
+    <div class="sec">Managerial vs Non-Managerial</div>
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">Progress per level jabatan</div>
+        <div class="card-sub">Stacked: Not Yet / In Progress / Completed</div>
+        <div class="legend">
+          <span class="leg"><span class="leg-dot" style="background:#dde0e8"></span>Not Yet</span>
+          <span class="leg"><span class="leg-dot" style="background:var(--blue)"></span>In Progress</span>
+          <span class="leg"><span class="leg-dot" style="background:var(--green)"></span>Completed</span>
+        </div>
+        <div style="position:relative;height:200px"><canvas id="cMgrStack"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Distribusi jumlah competency per karyawan</div>
+        <div class="card-sub">Biru = standar (6–7) · Ungu = lebih dari 7</div>
+        <div style="position:relative;height:200px"><canvas id="cDistComp"></canvas></div>
+      </div>
+    </div>
+
+    <!-- KOMPARTEMEN -->
+    <div class="sec">Per Kompartemen</div>
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">Total aktivitas — top 10 kompartemen</div>
+        <div class="card-sub">Horizontal stacked: Not Yet / In Progress / Completed</div>
+        <div class="legend">
+          <span class="leg"><span class="leg-dot" style="background:#dde0e8"></span>Not Yet</span>
+          <span class="leg"><span class="leg-dot" style="background:var(--blue)"></span>In Progress</span>
+          <span class="leg"><span class="leg-dot" style="background:var(--green)"></span>Completed</span>
+        </div>
+        <div style="position:relative;height:320px"><canvas id="cKomp"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Rata-rata % selesai per kompartemen</div>
+        <div class="card-sub">Completion rate individual per kompartemen</div>
+        <div style="position:relative;height:320px"><canvas id="cKompPct"></canvas></div>
+      </div>
+    </div>
+
+    <!-- DEPARTEMEN -->
+    <div class="sec">Top Departemen</div>
+    <div class="card gw">
+      <div class="card-title">Top 10 departemen — rata-rata % competency selesai/karyawan</div>
+      <div class="card-sub">Min. 5 peserta · Hijau ≥10% · Biru ≥3% · Ungu lainnya</div>
+      <div style="position:relative;height:320px"><canvas id="cDept"></canvas></div>
+    </div>
+
+    <!-- IDP STATUS & DISTRIBUSI -->
+    <div class="sec">Status IDP & Distribusi Aktivitas</div>
+    <div class="g2">
+      <div class="card"><div class="card-title">Status IDP seluruh peserta</div><div class="card-sub">Realization vs Review by Superior</div><div style="position:relative;height:200px"><canvas id="cIdpStatus"></canvas></div></div>
+      <div class="card"><div class="card-title">Distribusi jumlah competency per karyawan</div><div class="card-sub">Sebaran beban IDP</div><div style="position:relative;height:200px"><canvas id="cAktDist"></canvas></div></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let _charts={};
+const $=id=>document.getElementById(id);
+const fmt=n=>Number(n).toLocaleString('id-ID');
+const f1=n=>Number(n).toFixed(1);
+const txtC='#9aa0b8', gridC='rgba(0,0,0,0.05)';
+
+$('file-input').addEventListener('change',e=>{if(e.target.files[0])processFile(e.target.files[0])});
+const dz=$('drop-zone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0])});
+
+function processFile(file){
+  $('loading').style.display='flex';
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true,cellNF:false,cellText:false});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+
+      // Baca sebagai array of arrays dulu untuk deteksi header
+      const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+
+      // Cari baris header (baris yang mengandung 'Participant Name' atau 'Total')
+      let headerRow=0;
+      for(let i=0;i<Math.min(10,aoa.length);i++){
+        const row=aoa[i];
+        if(row&&row.some(c=>String(c||'').toLowerCase().includes('participant')||String(c||'').toLowerCase().includes('total'))){
+          headerRow=i;break;
+        }
+      }
+
+      const headers=aoa[headerRow].map(h=>String(h||'').trim());
+      const rows=[];
+      for(let i=headerRow+1;i<aoa.length;i++){
+        const row=aoa[i];
+        if(!row||row.every(c=>c===null||c===''||c===undefined))continue;
+        const obj={};
+        headers.forEach((h,j)=>obj[h]=row[j]??null);
+        rows.push(obj);
+      }
+
+      const data=rows.filter(r=>r['Participant Name']&&r['Total']!==null&&r['Total']!==''&&!isNaN(Number(r['Total'])));
+
+      if(!data.length){
+        $('loading').style.display='none';
+        alert('Data tidak ditemukan. Pastikan file memiliki kolom: Participant Name, Total, Not Yet, In Progress, Completed.');
+        return;
+      }
+
+      $('loading').style.display='none';
+      $('fname').textContent=file.name;
+      buildDashboard(data);
+    }catch(err){
+      $('loading').style.display='none';
+      alert('Gagal membaca file: '+err.message+'\nPastikan format .xlsx atau .xls dan kolom sesuai.');
+      console.error(err);
+    }
+  };
+  r.onerror=()=>{
+    $('loading').style.display='none';
+    alert('Gagal membuka file. Coba lagi.');
+  };
+  r.readAsArrayBuffer(file);
+}
+
+function resetDB(){
+  Object.values(_charts).forEach(c=>c.destroy());
+  _charts={};
+  $('dashboard').style.display='none';
+  $('upload-screen').style.display='flex';
+  $('file-input').value='';
+}
+
+function mkChart(id,type,data,opts){
+  if(_charts[id])_charts[id].destroy();
+  _charts[id]=new Chart($(id),{type,data,options:opts});
+}
+
+/* render tabel nama dengan search */
+function renderPeopleTable(areaId, rows, cols, sid){
+  const area=$(areaId);
+  function draw(list){
+    area.innerHTML=`<input class="people-search" id="${sid}" placeholder="Cari nama / NIK / departemen…">`
+      +(list.length
+        ?`<div class="people-table-wrap"><table class="people-table">
+            <thead><tr>${cols.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead>
+            <tbody>${list.map((r,i)=>`<tr>${cols.map(c=>`<td class="${c.cls||''}">${c.fn(r,i)}</td>`).join('')}</tr>`).join('')}</tbody>
+           </table></div>`
+        :`<div class="empty-state">Tidak ada data</div>`);
+    const inp=$(sid);
+    if(inp) inp.addEventListener('input',()=>{
+      const q=inp.value.toLowerCase();
+      const f=rows.filter(r=>[r._name,String(r._nik),r._dir,r._dept,r._status].some(v=>String(v).toLowerCase().includes(q)));
+      draw(f);$(sid).value=inp.value;$(sid).focus();
+    });
+  }
+  draw(rows);
+}
+
+function buildDashboard(data){
+  const n=v=>(v===null||v===undefined||isNaN(v))?0:Number(v);
+  data.forEach(r=>{
+    r._total=n(r['Total']);r._ny=n(r['Not Yet']);r._ip=n(r['In Progress']);r._done=n(r['Completed']);
+    r._status=r['Managerial Status']||'';r._idpStatus=r['IDP Status']||'';
+    r._dir=(r['Directorate']||'').replace('Direktorat ','Dit. ');
+    r._comp=r['Compartment']||'';r._dept=r['Department']||'';
+    r._name=r['Participant Name']||'-';r._nik=r['NIK']||'-';
+    r._pct=r._total>0?r._done/r._total*100:0;
+    r._isNM=r._status==='Non Managerial';r._isMG=r._status==='Managerial';
+    r._extraComp=(r._isNM&&r._total>6)||(r._isMG&&r._total>7);
+    if(r._done===r._total&&r._total>0)r._kateg='Selesai 100%';
+    else if(r._done>0)r._kateg='Sebagian selesai';
+    else if(r._ip>0)r._kateg='In Progress';
+    else r._kateg='Belum mulai';
+  });
+
+  const tot=data.length;
+  const totalAkt=data.reduce((s,r)=>s+r._total,0);
+  const totalNY=data.reduce((s,r)=>s+r._ny,0);
+  const totalIP=data.reduce((s,r)=>s+r._ip,0);
+  const totalDone=data.reduce((s,r)=>s+r._done,0);
+  const fullDone=data.filter(r=>r._kateg==='Selesai 100%').length;
+  const hasProg=data.filter(r=>r._pct>0).length;
+  const belum=data.filter(r=>r._kateg==='Belum mulai').length;
+  const extra=data.filter(r=>r._extraComp).length;
+  const dirs=[...new Set(data.map(r=>r._dir))];
+
+  if(fullDone===0){$('alert-banner').style.display='flex';$('alert-text').textContent='Belum ada karyawan yang menyelesaikan 100% semua competency IDP hingga saat ini.';}
+  else{$('alert-banner').style.display='none';}
+
+  $('m-total').textContent=fmt(tot);$('m-dir').textContent=dirs.length+' direktorat';
+  $('m-akt').textContent=fmt(totalAkt);$('m-avg').textContent='rata-rata '+f1(totalAkt/tot)+'/orang';
+  $('m-full').textContent=fmt(fullDone);$('m-full-pct').textContent=f1(fullDone/tot*100)+'% peserta';
+  $('m-prog').textContent=fmt(hasProg);$('m-prog-pct').textContent=f1(hasProg/tot*100)+'% ada progress';
+  $('m-belum').textContent=fmt(belum);$('m-belum-pct').textContent=f1(belum/tot*100)+'% peserta';
+  const nmCount=data.filter(r=>r._isNM&&r._total>6).length;
+  const mgCount=data.filter(r=>r._isMG&&r._total>7).length;
+  $('m-extra').textContent=fmt(extra);$('m-extra-pct').textContent='NM>6: '+nmCount+' · Mgr>7: '+mgCount;
+
+  /* BUCKET */
+  function getBucket(p){if(p===0)return'0%';if(p<25)return'1–24%';if(p<50)return'25–49%';if(p<75)return'50–74%';if(p<100)return'75–99%';return'100%';}
+  const bDef=[{k:'0%',col:'#e84545'},{k:'1–24%',col:'#f09425'},{k:'25–49%',col:'#7c5cbf'},{k:'50–74%',col:'#3b6ef5'},{k:'75–99%',col:'#0ea5a0'},{k:'100%',col:'#18b566'}];
+  const bCount={};bDef.forEach(b=>bCount[b.k]=0);
+  data.forEach(r=>bCount[getBucket(r._pct)]++);
+  $('bucket-grid').innerHTML=bDef.map(b=>`
+    <div class="bucket-card">
+      <div class="bucket-num" style="color:${b.col}">${fmt(bCount[b.k])}</div>
+      <div class="bucket-label">karyawan<br>${b.k} selesai</div>
+    </div>`).join('');
+
+  /* DAFTAR NAMA PER STATUS */
+  const progGroups={
+    'In Progress':data.filter(r=>r._kateg==='In Progress').sort((a,b)=>b._ip-a._ip),
+    'Sebagian selesai':data.filter(r=>r._kateg==='Sebagian selesai').sort((a,b)=>b._pct-a._pct),
+    'Selesai 100%':data.filter(r=>r._kateg==='Selesai 100%'),
+    'Belum mulai':data.filter(r=>r._kateg==='Belum mulai'),
+  };
+  const progCols=[
+    {label:'#',fn:(_,i)=>i+1,cls:'mono muted'},
+    {label:'Nama',fn:r=>r._name},
+    {label:'NIK',fn:r=>r._nik,cls:'mono muted'},
+    {label:'Direktorat',fn:r=>r._dir,cls:'muted'},
+    {label:'Departemen',fn:r=>r._dept||'-',cls:'muted'},
+    {label:'Level',fn:r=>`<span class="tag ${r._isNM?'tag-nm':'tag-mg'}">${r._isNM?'Non Mgr':'Mgr'}</span>`},
+    {label:'Total',fn:r=>r._total,cls:'mono'},
+    {label:'Not Yet',fn:r=>r._ny,cls:'mono'},
+    {label:'In Prog',fn:r=>r._ip,cls:'mono'},
+    {label:'Done',fn:r=>r._done,cls:'mono'},
+    {label:'%',fn:r=>{const c=r._pct>=100?['#edfaf3','#0e8c4e']:r._pct>0?['#eef2ff','#2952c4']:['#fff0f0','#c02020'];return`<span class="pct-pill" style="background:${c[0]};color:${c[1]}">${f1(r._pct)}%</span>`}},
+  ];
+
+  const tabsEl=$('progress-tabs');
+  const areaEl=$('progress-table-area');
+  const progKeys=Object.keys(progGroups);
+  const tabColors={'In Progress':'#3b6ef5','Sebagian selesai':'#f09425','Selesai 100%':'#18b566','Belum mulai':'#e84545'};
+  let curKey=progKeys[0];
+
+  tabsEl.innerHTML=progKeys.map((k,i)=>`
+    <button class="tab-btn${i===0?' active':''}" onclick="switchPT(this,'${k}')">
+      ${k} <span style="color:${tabColors[k]};font-size:10px;font-weight:700">${progGroups[k].length}</span>
+    </button>`).join('');
+
+  function renderPT(key){
+    const rows=progGroups[key];
+    renderPeopleTable('progress-table-area',rows,progCols,'pt_srch');
+  }
+  renderPT(curKey);
+  window.switchPT=function(btn,key){
+    tabsEl.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');renderPT(key);
+  };
+
+  /* EXTRA > 7 SECTIONS */
+  const nm=data.filter(r=>r._isNM), mg=data.filter(r=>r._isMG);
+  const nmExtra=nm.filter(r=>r._total>6).sort((a,b)=>b._total-a._total);
+  const mgExtra=mg.filter(r=>r._total>7).sort((a,b)=>b._total-a._total);
+  $('nm-extra-n').textContent=nmExtra.length;$('nm-total-n').textContent=nm.length;
+  $('nm-extra-sub').textContent=f1(nmExtra.length/nm.length*100)+'% dari total Non Managerial';
+  $('mg-extra-n').textContent=mgExtra.length;$('mg-total-n').textContent=mg.length;
+  $('mg-extra-sub').textContent=f1(mgExtra.length/mg.length*100)+'% dari total Managerial';
+
+  const extraCols=[
+    {label:'Nama',fn:r=>r._name},
+    {label:'NIK',fn:r=>r._nik,cls:'mono muted'},
+    {label:'Direktorat',fn:r=>r._dir,cls:'muted'},
+    {label:'Departemen',fn:r=>r._dept||'-',cls:'muted'},
+    {label:'Total',fn:r=>`<span class="tag tag-mg">${r._total}</span>`},
+    {label:'Not Yet',fn:r=>r._ny,cls:'mono'},
+    {label:'In Prog',fn:r=>r._ip,cls:'mono'},
+    {label:'Done',fn:r=>r._done,cls:'mono'},
+    {label:'%',fn:r=>{const c=r._pct>0?['#eef2ff','#2952c4']:['#fff0f0','#c02020'];return`<span class="pct-pill" style="background:${c[0]};color:${c[1]}">${f1(r._pct)}%</span>`}},
+  ];
+
+  function groupByTotal(arr){
+    const g={};
+    arr.forEach(r=>{const k=r._total+' comp';g[k]=(g[k]||[]);g[k].push(r);});
+    return Object.fromEntries(Object.entries(g).sort((a,b)=>Number(a[0])-Number(b[0])));
+  }
+
+  function buildExtraSection(tabsId,areaId,groups){
+    const tabsEl=$(tabsId),areaEl=$(areaId);
+    const keys=Object.keys(groups);
+    if(!keys.length){areaEl.innerHTML='<div class="empty-state">Tidak ada data</div>';return;}
+    tabsEl.innerHTML=keys.map((k,i)=>`<button class="tab-btn${i===0?' active':''}" onclick="switchET(this,'${tabsId}','${areaId}')" data-key="${k}">${k} <span style="color:var(--muted);font-size:10px">(${groups[k].length})</span></button>`).join('');
+    areaEl._groups=groups;
+    renderPeopleTable(areaId,groups[keys[0]],extraCols,areaId+'_s');
+  }
+  window.switchET=function(btn,tabsId,areaId){
+    $(tabsId).querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const groups=$(areaId)._groups;
+    renderPeopleTable(areaId,groups[btn.dataset.key],extraCols,areaId+'_s');
+  };
+  buildExtraSection('nm-tabs','nm-table-area',groupByTotal(nmExtra));
+  buildExtraSection('mg-tabs','mg-table-area',groupByTotal(mgExtra));
+
+  /* CHARTS */
+  const bOpt={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:txtC,font:{size:11}},grid:{display:false}},y:{ticks:{color:txtC,font:{size:11}},grid:{color:gridC}}}};
+
+  mkChart('cDonut','doughnut',{labels:['Not Yet','In Progress','Completed'],datasets:[{data:[totalNY,totalIP,totalDone],backgroundColor:['#dde0e8','#3b6ef5','#18b566'],borderWidth:0}]},{
+    responsive:true,maintainAspectRatio:false,cutout:'64%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)} (${f1(c.raw/totalAkt*100)}%)`}}}
+  });
+
+  const top10=[...data].sort((a,b)=>b._pct-a._pct||b._done-a._done).slice(0,10);
+  $('top-list').innerHTML=top10.map((r,i)=>`
+    <li>
+      <span class="top-rank">${i+1}</span>
+      <div class="top-name"><div class="top-name-txt">${r._name}</div><div class="top-sub">${r._dir} · ${r._status}</div></div>
+      <div class="pbar-wrap"><div class="pbar-fill" style="width:${r._pct}%;background:${r._pct>=50?'#18b566':'#3b6ef5'}"></div></div>
+      <span class="top-pct">${f1(r._pct)}%</span>
+    </li>`).join('');
+
+  const dirMap={};
+  data.forEach(r=>{
+    if(!dirMap[r._dir])dirMap[r._dir]={ny:0,ip:0,done:0,count:0,pctSum:0,totalSum:0};
+    dirMap[r._dir].ny+=r._ny;dirMap[r._dir].ip+=r._ip;dirMap[r._dir].done+=r._done;
+    dirMap[r._dir].count++;dirMap[r._dir].pctSum+=r._pct;dirMap[r._dir].totalSum+=r._total;
+  });
+  const dL=Object.keys(dirMap);
+  const dCols=['#3b6ef5','#18b566','#f09425','#e84545','#7c5cbf','#0ea5a0'];
+
+  mkChart('cDirStack','bar',{labels:dL,datasets:[
+    {label:'Not Yet',data:dL.map(d=>dirMap[d].ny),backgroundColor:'#dde0e8',stack:'s'},
+    {label:'In Progress',data:dL.map(d=>dirMap[d].ip),backgroundColor:'#3b6ef5',stack:'s'},
+    {label:'Completed',data:dL.map(d=>dirMap[d].done),backgroundColor:'#18b566',stack:'s'}
+  ]},{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{color:txtC,font:{size:11}},grid:{display:false}},y:{stacked:true,ticks:{color:txtC,font:{size:11}},grid:{color:gridC}}}});
+
+  mkChart('cDirCount','bar',{labels:dL,datasets:[{data:dL.map(d=>dirMap[d].count),backgroundColor:dCols,borderRadius:6}]},bOpt);
+  mkChart('cDirPct','bar',{labels:dL,datasets:[{data:dL.map(d=>+(dirMap[d].pctSum/dirMap[d].count).toFixed(2)),backgroundColor:'#3b6ef5',borderRadius:6}]},{...bOpt,scales:{x:{ticks:{color:txtC,font:{size:10}},grid:{display:false}},y:{ticks:{color:txtC,font:{size:11},callback:v=>v+'%'},grid:{color:gridC}}}});
+  mkChart('cDirAvgComp','bar',{labels:dL,datasets:[{data:dL.map(d=>+(dirMap[d].totalSum/dirMap[d].count).toFixed(2)),backgroundColor:'#0ea5a0',borderRadius:6}]},{...bOpt,scales:{x:{ticks:{color:txtC,font:{size:10}},grid:{display:false}},y:{ticks:{color:txtC,font:{size:11}},grid:{color:gridC},min:5,max:10}}});
+
+  const sumOf=(arr,k)=>arr.reduce((s,r)=>s+r[k],0);
+  mkChart('cMgrStack','bar',{labels:['Non Managerial','Managerial'],datasets:[
+    {label:'Not Yet',data:[sumOf(nm,'_ny'),sumOf(mg,'_ny')],backgroundColor:'#dde0e8',stack:'s'},
+    {label:'In Progress',data:[sumOf(nm,'_ip'),sumOf(mg,'_ip')],backgroundColor:'#3b6ef5',stack:'s'},
+    {label:'Completed',data:[sumOf(nm,'_done'),sumOf(mg,'_done')],backgroundColor:'#18b566',stack:'s'}
+  ]},{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{color:txtC,font:{size:11}},grid:{display:false}},y:{stacked:true,ticks:{color:txtC,font:{size:11}},grid:{color:gridC}}}});
+
+  const distC={};
+  data.forEach(r=>{distC[r._total]=(distC[r._total]||0)+1;});
+  const dKeys=Object.keys(distC).map(Number).sort((a,b)=>a-b);
+  mkChart('cDistComp','bar',{labels:dKeys.map(String),datasets:[{data:dKeys.map(k=>distC[k]),backgroundColor:dKeys.map(k=>k<=7?'#3b6ef5':'#7c5cbf'),borderRadius:4}]},{...bOpt,scales:{x:{ticks:{color:txtC,font:{size:11}},grid:{display:false},title:{display:true,text:'Jumlah competency · Biru = standar (≤7) · Ungu = lebih dari standar',color:txtC,font:{size:10}}},y:{ticks:{color:txtC,font:{size:11}},grid:{color:gridC}}}});
+
+  const kompM={};
+  data.forEach(r=>{const k=r._comp||'(kosong)';if(!kompM[k])kompM[k]={ny:0,ip:0,done:0,total:0,count:0,pctSum:0};kompM[k].ny+=r._ny;kompM[k].ip+=r._ip;kompM[k].done+=r._done;kompM[k].total+=r._total;kompM[k].count++;kompM[k].pctSum+=r._pct;});
+  const kSorted=Object.entries(kompM).sort((a,b)=>b[1].total-a[1].total).slice(0,10);
+  const kL=kSorted.map(([k])=>k.replace('Komp. ','').replace('Komp.',''));
+  mkChart('cKomp','bar',{labels:kL,datasets:[
+    {label:'Not Yet',data:kSorted.map(([,v])=>v.ny),backgroundColor:'#dde0e8',stack:'s'},
+    {label:'In Progress',data:kSorted.map(([,v])=>v.ip),backgroundColor:'#3b6ef5',stack:'s'},
+    {label:'Completed',data:kSorted.map(([,v])=>v.done),backgroundColor:'#18b566',stack:'s'}
+  ]},{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{color:txtC,font:{size:10}},grid:{color:gridC}},y:{stacked:true,ticks:{color:txtC,font:{size:10}},grid:{display:false}}}});
+
+  const kpSorted=Object.entries(kompM).filter(([,v])=>v.count>=3).sort((a,b)=>(b[1].pctSum/b[1].count)-(a[1].pctSum/a[1].count)).slice(0,10);
+  mkChart('cKompPct','bar',{labels:kpSorted.map(([k])=>k.replace('Komp. ','')),datasets:[{data:kpSorted.map(([,v])=>+(v.pctSum/v.count).toFixed(2)),backgroundColor:'#0ea5a0',borderRadius:4}]},{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${f1(c.raw)}%`}}},scales:{x:{ticks:{color:txtC,font:{size:11},callback:v=>v+'%'},grid:{color:gridC}},y:{ticks:{color:txtC,font:{size:10}},grid:{display:false}}}});
+
+  const deptM={};
+  data.forEach(r=>{const d=r._dept||'(kosong)';if(!deptM[d])deptM[d]={count:0,pctSum:0};deptM[d].count++;deptM[d].pctSum+=r._pct;});
+  const dpSorted=Object.entries(deptM).filter(([,v])=>v.count>=5).sort((a,b)=>(b[1].pctSum/b[1].count)-(a[1].pctSum/a[1].count)).slice(0,10);
+  const dpPcts=dpSorted.map(([,v])=>+(v.pctSum/v.count).toFixed(2));
+  mkChart('cDept','bar',{labels:dpSorted.map(([k])=>k),datasets:[{data:dpPcts,backgroundColor:dpPcts.map(v=>v>=10?'#18b566':v>=3?'#3b6ef5':'#7c5cbf'),borderRadius:4}]},{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${f1(c.raw)}%`}}},scales:{x:{ticks:{color:txtC,font:{size:11},callback:v=>v+'%'},grid:{color:gridC}},y:{ticks:{color:txtC,font:{size:11}},grid:{display:false}}}});
+
+  const idpS={};
+  data.forEach(r=>{const s=r._idpStatus||'Tidak diketahui';idpS[s]=(idpS[s]||0)+1;});
+  const idpKeys=Object.keys(idpS);
+  mkChart('cIdpStatus','doughnut',{labels:idpKeys,datasets:[{data:idpKeys.map(k=>idpS[k]),backgroundColor:['#3b6ef5','#f09425','#18b566','#e84545'],borderWidth:0}]},{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)} (${f1(c.raw/tot*100)}%)`}}}});
+
+  const aktD={};
+  data.forEach(r=>{aktD[r._total]=(aktD[r._total]||0)+1;});
+  const aktKeys=Object.keys(aktD).map(Number).sort((a,b)=>a-b);
+  mkChart('cAktDist','bar',{labels:aktKeys.map(String),datasets:[{data:aktKeys.map(k=>aktD[k]),backgroundColor:'#7c5cbf',borderRadius:4}]},{...bOpt,scales:{x:{ticks:{color:txtC,font:{size:11}},grid:{display:false},title:{display:true,text:'Jumlah competency',color:txtC,font:{size:10}}},y:{ticks:{color:txtC,font:{size:11}},grid:{color:gridC}}}});
+
+  $('upload-screen').style.display='none';
+  $('dashboard').style.display='block';
+  window.scrollTo(0,0);
+}
+</script>
+</body>
+</html>
