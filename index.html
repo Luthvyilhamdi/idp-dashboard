@@ -150,6 +150,11 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
   <div class="upload-eyebrow">IDP Analytics · 2026</div>
   <h1 class="upload-title">Development Plan <strong>Dashboard</strong></h1>
   <p class="upload-sub">Import file Excel untuk melihat analisis lengkap progress IDP karyawan</p>
+  <div id="storage-notice" style="display:none;margin-bottom:1.5rem;background:#eef2ff;border:1px solid rgba(59,110,245,.2);border-radius:10px;padding:.75rem 1.25rem;font-size:13px;color:#2952c4;display:flex;align-items:center;gap:8px;max-width:500px">
+    💾 <span>Ada data tersimpan dari sesi sebelumnya. <strong id="notice-fname"></strong></span>
+    <button onclick="loadFromStorage()" style="margin-left:auto;background:#3b6ef5;color:#fff;border:none;border-radius:7px;padding:5px 14px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:600">Muat</button>
+    <button onclick="clearStorage()" style="background:transparent;color:#2952c4;border:1px solid rgba(59,110,245,.3);border-radius:7px;padding:5px 10px;cursor:pointer;font-size:12px;font-family:inherit">Hapus</button>
+  </div>
   <div class="upload-zone" id="drop-zone">
     <input type="file" id="file-input" accept=".xlsx,.xls">
     <div class="upload-icon">📂</div>
@@ -177,7 +182,7 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
       <span class="topbar-title">Development Plan Dashboard</span>
       <span class="topbar-file" id="fname"></span>
     </div>
-    <button class="btn-reset" onclick="resetDB()">↩ Ganti File</button>
+    <button class="btn-reset" onclick="resetDB()">🗑 Hapus Data & Ganti File</button>
   </div>
 
   <div class="main">
@@ -383,6 +388,11 @@ function processFile(file){
 
       $('loading').style.display='none';
       $('fname').textContent=file.name;
+      // Simpan ke localStorage
+      try{
+        localStorage.setItem('idp_data', JSON.stringify(data));
+        localStorage.setItem('idp_filename', file.name);
+      }catch(e){console.warn('localStorage penuh, data tidak disimpan');}
       buildDashboard(data);
     }catch(err){
       $('loading').style.display='none';
@@ -400,10 +410,49 @@ function processFile(file){
 function resetDB(){
   Object.values(_charts).forEach(c=>c.destroy());
   _charts={};
+  localStorage.removeItem('idp_data');
+  localStorage.removeItem('idp_filename');
   $('dashboard').style.display='none';
   $('upload-screen').style.display='flex';
   $('file-input').value='';
 }
+
+function clearStorage(){
+  localStorage.removeItem('idp_data');
+  localStorage.removeItem('idp_filename');
+  $('storage-notice').style.display='none';
+}
+
+function loadFromStorage(){
+  try{
+    const saved=localStorage.getItem('idp_data');
+    const fname=localStorage.getItem('idp_filename');
+    if(saved){
+      const data=JSON.parse(saved);
+      if(data&&data.length){
+        $('fname').textContent=fname||'Data tersimpan';
+        buildDashboard(data);
+      }
+    }
+  }catch(e){clearStorage();}
+}
+
+// Cek localStorage saat halaman dibuka
+(function initFromStorage(){
+  try{
+    const saved=localStorage.getItem('idp_data');
+    const fname=localStorage.getItem('idp_filename');
+    if(saved&&JSON.parse(saved).length){
+      // Auto-load langsung
+      const data=JSON.parse(saved);
+      $('fname').textContent=fname||'Data tersimpan';
+      buildDashboard(data);
+    }
+  }catch(e){
+    localStorage.removeItem('idp_data');
+    localStorage.removeItem('idp_filename');
+  }
+})();
 
 function mkChart(id,type,data,opts){
   if(_charts[id])_charts[id].destroy();
